@@ -8,7 +8,7 @@
 	</array>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.cn.easytier</string>
+		<string>group.com.ousialife.easytier</string>
 	</array>
 </dict>
 </plist>
