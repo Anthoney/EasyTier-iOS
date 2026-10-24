@@ -297,157 +297,175 @@ struct DashboardView<Manager: NetworkExtensionManagerProtocol>: View {
         }
     }
 
+    private var profileItems: [IdenticalTextItem] {
+        ProfileStore.loadIndexOrEmpty().map { IdenticalTextItem($0) }
+    }
+
+    private var connectionModeSection: some View {
+        Section("web_management.connection_mode") {
+            Picker("web_management.connection_mode", selection: connectionModeBinding) {
+                Text("web_management.mode.local").tag(EasyTierConnectionMode.local)
+                Text("web_management.title").tag(EasyTierConnectionMode.web)
+            }
+            .pickerStyle(.segmented)
+            .disabled(isPending || isConnected)
+        }
+    }
+
+    private var networkProfilesSection: some View {
+        Section("network") {
+            ForEach(profileItems) { item in
+                HStack {
+                    Text(item.id)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    if selectedSession.session?.name == item.id {
+                        Image(systemName: "checkmark")
+                            .foregroundColor(.blue)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if selectedSession.session?.name == item.id {
+                        Task { @MainActor in
+                            await closeSelectedSession()
+                        }
+                    } else {
+                        Task { @MainActor in
+                            await loadProfile(item.id)
+                        }
+                    }
+                }
+                .contextMenu {
+                    Button {
+                        editingProfileName = item.id
+                        editConfigNameInput = item.id
+                        showEditConfigNameAlert = true
+                    } label: {
+                        Label("rename", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) {
+                        Task { @MainActor in
+                            do {
+                                if selectedSession.session?.name == item.id {
+                                    await closeSelectedSession(save: false)
+                                }
+                                try ProfileStore.deleteProfile(named: item.id)
+                            } catch {
+                                dashboardLogger.error("delete profile failed: \(error)")
+                                errorMessage = .init(error.localizedDescription)
+                            }
+                        }
+                    } label: {
+                        Label("delete", systemImage: "trash")
+                            .tint(.red)
+                    }
+                }
+                .swipeActions(edge: .leading) {
+                    Button {
+                        editingProfileName = item.id
+                        editConfigNameInput = item.id
+                        showEditConfigNameAlert = true
+                    } label: {
+                        Label("rename", systemImage: "pencil")
+                    }
+                    .tint(.orange)
+                }
+            }
+            .onDelete { indexSet in
+                withAnimation {
+                    let currentProfiles = profileItems
+                    for index in indexSet {
+                        guard index < currentProfiles.count else { continue }
+                        let profileId = currentProfiles[index].id
+                        Task { @MainActor in
+                            do {
+                                if selectedSession.session?.name == profileId {
+                                    await closeSelectedSession(save: false)
+                                }
+                                try ProfileStore.deleteProfile(named: profileId)
+                            } catch {
+                                dashboardLogger.error("delete profile failed: \(error)")
+                                errorMessage = .init(error.localizedDescription)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var deviceManagementSection: some View {
+        Section("device.management") {
+            Button {
+                showNewNetworkAlert = true
+            } label: {
+                HStack(spacing: 12) {
+                    if #available(iOS 18.0, *) {
+                        Image(systemName: "document.badge.plus")
+                    } else {
+                        Image(systemName: "plus.app")
+                    }
+                    Text("profile.create_network")
+                }
+            }
+#if os(macOS)
+            .buttonStyle(.borderless)
+            .tint(.accentColor)
+#endif
+            Button {
+                presentEditInText()
+            } label: {
+                HStack(spacing: 12) {
+                    if #available(iOS 18.4, *) {
+                        Image(systemName: "long.text.page.and.pencil")
+                    } else {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    Text("profile.edit_in_text")
+                }
+            }
+#if os(macOS)
+            .buttonStyle(.borderless)
+            .tint(.accentColor)
+#endif
+            Button {
+                showImportPicker = true
+            } label: {
+                HStack(spacing: 12) {
+                    if #available(iOS 18.0, *) {
+                        Image(systemName: "arrow.down.document")
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    Text("profile.import_config")
+                }
+            }
+#if os(macOS)
+            .buttonStyle(.borderless)
+            .tint(.accentColor)
+#endif
+            Button {
+                exportSelectedProfile()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("profile.export_config")
+                }
+            }
+#if os(macOS)
+            .buttonStyle(.borderless)
+            .tint(.accentColor)
+#endif
+        }
+    }
+
     var manageSheet: some View {
         NavigationStack {
             Form {
-                Section("web_management.connection_mode") {
-                    Picker("web_management.connection_mode", selection: connectionModeBinding) {
-                        Text("web_management.mode.local").tag(EasyTierConnectionMode.local)
-                        Text("web_management.title").tag(EasyTierConnectionMode.web)
-                    }
-                    .pickerStyle(.segmented)
-                    .disabled(isPending || isConnected)
-                }
-                Section("network") {
-                    let profiles = ProfileStore.loadIndexOrEmpty().map{ IdenticalTextItem($0) }
-                    ForEach(profiles) { item in
-                        HStack {
-                            Text(item.id)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if selectedSession.session?.name == item.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {  
-                            if selectedSession.session?.name == item.id {
-                                Task { @MainActor in
-                                    await closeSelectedSession()
-                                }
-                            } else {
-                                Task { @MainActor in
-                                    await loadProfile(item.id)
-                                }
-                            }
-                        }
-                        .contextMenu {
-                            Button {
-                                editingProfileName = item.id
-                                editConfigNameInput = item.id
-                                showEditConfigNameAlert = true
-                            } label: {
-                                Label("rename", systemImage: "pencil")
-                            }
-                            Button(role: .destructive) {
-                                Task { @MainActor in
-                                    do {
-                                        if selectedSession.session?.name == item.id {
-                                            await closeSelectedSession(save: false)
-                                        }
-                                        try ProfileStore.deleteProfile(named: item.id)
-                                    } catch {
-                                        dashboardLogger.error("delete profile failed: \(error)")
-                                        errorMessage = .init(error.localizedDescription)
-                                    }
-                                }
-                            } label: {
-                                Label("delete", systemImage: "trash")
-                                    .tint(.red)
-                            }
-                        }
-                        .swipeActions(edge: .leading) {
-                            Button {
-                                editingProfileName = item.id
-                                editConfigNameInput = item.id
-                                showEditConfigNameAlert = true
-                            } label: {
-                                Label("rename", systemImage: "pencil")
-                            }
-                            .tint(.orange)
-                        }
-                    }
-                    .onDelete { indexSet in
-                        withAnimation {
-                            for index in indexSet {
-                                Task { @MainActor in
-                                    do {
-                                        if selectedSession.session?.name == profiles[index].id {
-                                            await closeSelectedSession(save: false)
-                                        }
-                                        try ProfileStore.deleteProfile(named: profiles[index].id)
-                                    } catch {
-                                        dashboardLogger.error("delete profile failed: \(error)")
-                                        errorMessage = .init(error.localizedDescription)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Section("device.management") {
-                    Button {
-                        showNewNetworkAlert = true
-                    } label: {
-                        HStack(spacing: 12) {
-                            if #available(iOS 18.0, *) {
-                                Image(systemName: "document.badge.plus")
-                            } else {
-                                Image(systemName: "plus.app")
-                            }
-                            Text("profile.create_network")
-                        }
-                    }
-#if os(macOS)
-                    .buttonStyle(.borderless)
-                    .tint(.accentColor)
-#endif
-                    Button {
-                        presentEditInText()
-                    } label: {
-                        HStack(spacing: 12) {
-                            if #available(iOS 18.4, *) {
-                                Image(systemName: "long.text.page.and.pencil")
-                            } else {
-                                Image(systemName: "square.and.pencil")
-                            }
-                            Text("profile.edit_in_text")
-                        }
-                    }
-#if os(macOS)
-                    .buttonStyle(.borderless)
-                    .tint(.accentColor)
-#endif
-                    Button {
-                        showImportPicker = true
-                    } label: {
-                        HStack(spacing: 12) {
-                            if #available(iOS 18.0, *) {
-                                Image(systemName: "arrow.down.document")
-                            } else {
-                                Image(systemName: "square.and.arrow.down")
-                            }
-                            Text("profile.import_config")
-                        }
-                    }
-#if os(macOS)
-                    .buttonStyle(.borderless)
-                    .tint(.accentColor)
-#endif
-                    Button {
-                        exportSelectedProfile()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("profile.export_config")
-                        }
-                    }
-#if os(macOS)
-                    .buttonStyle(.borderless)
-                    .tint(.accentColor)
-#endif
-                }
+                connectionModeSection
+                networkProfilesSection
+                deviceManagementSection
             }
             .formStyle(.grouped)
             .navigationTitle("device.management")
@@ -466,18 +484,13 @@ struct DashboardView<Manager: NetworkExtensionManagerProtocol>: View {
             .alert("add_new_network", isPresented: $showNewNetworkAlert) {
                 TextField("config_name", text: $newNetworkInput)
                     .adaptiveNoTextInputAutocapitalization()
-                if #available(iOS 26.0, macOS 26.0, *) {
-                    Button(role: .cancel) {}
-                    Button("network.create", role: .confirm, action: createProfile)
-                } else {
-                    Button("common.cancel") {}
-                    Button("network.create", action: createProfile)
-                }
+                Button("common.cancel", role: .cancel) {}
+                Button("network.create", action: createProfile)
             }
             .alert("edit_config_name", isPresented: $showEditConfigNameAlert) {
                 TextField("config_name", text: $editConfigNameInput)
                     .adaptiveNoTextInputAutocapitalization()
-                Button("common.cancel") {}
+                Button("common.cancel", role: .cancel) {}
                 Button("save") {
                     commitConfigNameEdit()
                 }
