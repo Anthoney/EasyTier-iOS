@@ -208,11 +208,11 @@ struct StatusView<Manager: NetworkExtensionManagerProtocol>: View {
             HStack(spacing: 42) {
                 TrafficItem(
                     trafficType: .Rx,
-                    value: (status?.sum(of: \.rxBytes)),
+                    value: (status?.sum(of: \.rxBytes))
                 )
                 TrafficItem(
                     trafficType: .Tx,
-                    value: (status?.sum(of: \.txBytes)),
+                    value: (status?.sum(of: \.txBytes))
                 )
             }
 
@@ -378,7 +378,7 @@ struct LocalPeerRowView: View {
             iconSystemName: iconSystemName,
             hostname: myNodeInfo.hostname,
             firstLineText: firstLineText,
-            secondLineText: secondLineText,
+            secondLineText: secondLineText
         ) {
             Text("local")
                 .font(.caption2)
@@ -607,21 +607,14 @@ struct StatItem: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if #available(iOS 26.0, macOS 26.0, *) {
-                Label(label, systemImage: icon)
+            HStack(spacing: 4) {
+                Image(systemName: icon)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .labelIconToTitleSpacing(2)
-            } else {
-                HStack(spacing: 4) {
-                    Image(systemName: icon)
-                        .font(.caption)
-                    Text(label)
-                        .font(.caption)
-                }
-                .padding(.leading, 4)
-                .foregroundStyle(.secondary)
+                Text(label)
+                    .font(.caption)
             }
+            .padding(.leading, 4)
+            .foregroundStyle(.secondary)
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.medium)

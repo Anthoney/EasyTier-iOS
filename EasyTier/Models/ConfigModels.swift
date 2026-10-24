@@ -300,7 +300,7 @@ import Foundation
             return ProxyNetworkConfig(
                 cidr: cidrString,
                 mappedCIDR: cidr.enableMapping ? cidr.mappedCIDRString : nil,
-                allow: cidr.allow,
+                allow: cidr.allow
             )
         })
 
@@ -308,7 +308,7 @@ import Foundation
             PortForwardConfig(
                 bindAddr: "\($0.bindAddr):\($0.bindPort)",
                 dstAddr: "\($0.destAddr):\($0.destPort)",
-                proto: $0.proto,
+                proto: $0.proto
             )
         })
 
@@ -328,7 +328,7 @@ import Foundation
         if profile.enableVPNPortal {
             self.vpnPortalConfig = VPNPortalConfig(
                 clientCIDR: profile.vpnPortalClientCIDR.cidrString,
-                wireguardListen: "0.0.0.0:\(profile.vpnPortalListenPort)",
+                wireguardListen: "0.0.0.0:\(profile.vpnPortalListenPort)"
             )
         } else {
             self.vpnPortalConfig = nil

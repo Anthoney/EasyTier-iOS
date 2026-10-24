@@ -359,7 +359,7 @@ actor ProfileSessionQueue {
 
 @MainActor
 final class ProfileSession: ObservableObject, Equatable {
-    static func == (lhs: ProfileSession, rhs: ProfileSession) -> Bool {
+    nonisolated static func == (lhs: ProfileSession, rhs: ProfileSession) -> Bool {
         lhs.name == rhs.name
     }
 
@@ -377,9 +377,8 @@ final class ProfileSession: ObservableObject, Equatable {
         registerConflictObserver()
     }
 
-    @MainActor
     deinit {
-        unregisterConflictObserver()
+        conflictObserver?.stop()
     }
 
     func save() async throws {

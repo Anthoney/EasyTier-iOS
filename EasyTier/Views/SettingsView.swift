@@ -101,7 +101,7 @@ struct SettingsView<Manager: NetworkExtensionManagerProtocol>: View {
                         sharedDefaults.synchronize()
                     }
                 },
-                secondaryButton: .cancel(),
+                secondaryButton: .cancel()
             )
         }
         .alert(item: $profileMigrationConflict) { conflict in
